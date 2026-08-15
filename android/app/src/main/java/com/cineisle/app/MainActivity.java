@@ -691,7 +691,9 @@ private final Runnable poller = new Runnable() {
         LinearLayout.LayoutParams fx = new LinearLayout.LayoutParams(0, dp(46), 1); fx.setMargins(dp(8),0,0,0);
         actions.addView(fullscreen, fx);
         add(c, actions, -1, 46, 12);
-        add(c, videoFrame, -1, 250, 16);
+        LinearLayout.LayoutParams vfLp = new LinearLayout.LayoutParams(-1, dp(250));
+        vfLp.setMargins(0, 0, 0, dp(16));
+        c.addView(videoFrame, vfLp);
 
         MediaController mc = new MediaController(this);
         video.setMediaController(mc);
