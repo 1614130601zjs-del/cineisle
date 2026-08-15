@@ -32,6 +32,18 @@ public class CinemaAccessibilityService extends AccessibilityService {
         startLoop();
     }
 
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null && intent.hasExtra("resultCode") && intent.hasExtra("data")) {
+            int resultCode = intent.getIntExtra("resultCode", -1);
+            Intent data = intent.getParcelableExtra("data");
+            if (resultCode == RESULT_OK && data != null) {
+                startMediaProjection(resultCode, data);
+            }
+        }
+        return super.onStartCommand(intent, flags, startId);
+    }
+
     private final Runnable screenshotLoop = new Runnable() {
         @Override public void run() {
             tryUploadScreenshot();
@@ -126,81 +138,71 @@ public class CinemaAccessibilityService extends AccessibilityService {
         return bos.toString("UTF-8");
     }
 
+    private MediaProjection mediaProjection = null;
+    private ImageReader imageReader = null;
+    private int screenWidth = 0, screenHeight = 0, screenDensity = 0;
+
+    public void startMediaProjection(int resultCode, Intent data) {
+        if (mediaProjection != null) return;
+        MediaProjectionManager mgr = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+        mediaProjection = mgr.getMediaProjection(resultCode, data);
+        if (mediaProjection != null) {
+            initImageReader();
+            setStatus("MediaProjection 已启动，可以截图");
+        } else {
+            setStatus("MediaProjection 启动失败");
+        }
+    }
+
+    private void initImageReader() {
+        WindowManager wm = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
+        DisplayMetrics metrics = new DisplayMetrics();
+        wm.getDefaultDisplay().getRealMetrics(metrics);
+        screenWidth = metrics.widthPixels;
+        screenHeight = metrics.heightPixels;
+        screenDensity = metrics.densityDpi;
+        imageReader = ImageReader.newInstance(screenWidth, screenHeight, PixelFormat.RGBA_8888, 2);
+        mediaProjection.createVirtualDisplay("cineisle", screenWidth, screenHeight, screenDensity,
+            DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, imageReader.getSurface(), null, null);
+    }
+
     private void takeAndUpload(final String serverUrl, final String roomId, final String token, final String name, final String source) {
-        if (Build.VERSION.SDK_INT < 30) {
-            setStatus("截图失败：系统版本低于 Android 11");
+        if (mediaProjection == null || imageReader == null) {
+            setStatus("截图失败：MediaProjection 未启动，请先授权录屏");
+            getSharedPreferences("cineisle", 0).edit().putLong("lastScreenshotUploadMs", 0).apply();
             return;
         }
         try {
-            setStatus("正在请求系统截图…");
-            takeScreenshot(Display.DEFAULT_DISPLAY, screenshotExecutor, new AccessibilityService.TakeScreenshotCallback() {
-                @Override public void onSuccess(AccessibilityService.ScreenshotResult result) {
-                    Bitmap softwareBitmap = null;
-                    Bitmap resizedBitmap = null;
-                    HardwareBuffer buffer = null;
-                    try {
-                        buffer = result.getHardwareBuffer();
-                        if (buffer == null) {
-                            setStatus("截图失败：系统返回空缓冲区");
-                            return;
-                        }
+            setStatus("正在截图…");
+            Image image = imageReader.acquireLatestImage();
+            if (image == null) {
+                setStatus("截图失败：未获取到图像");
+                getSharedPreferences("cineisle", 0).edit().putLong("lastScreenshotUploadMs", 0).apply();
+                return;
+            }
+            try {
+                Image.Plane[] planes = image.getPlanes();
+                ByteBuffer buffer = planes[0].getBuffer();
+                int pixelStride = planes[0].getPixelStride();
+                int rowStride = planes[0].getRowStride();
+                int rowPadding = rowStride - pixelStride * screenWidth;
+                Bitmap bitmap = Bitmap.createBitmap(screenWidth + rowPadding / pixelStride, screenHeight, Bitmap.Config.ARGB_8888);
+                bitmap.copyPixelsFromBuffer(buffer);
+                Bitmap cropped = Bitmap.createBitmap(bitmap, 0, 0, screenWidth, screenHeight);
+                bitmap.recycle();
 
-                        ColorSpace cs = result.getColorSpace();
-                        if (cs == null) {
-                            cs = ColorSpace.get(ColorSpace.Named.SRGB);
-                        }
-
-                        Bitmap hwBitmap = Bitmap.wrapHardwareBuffer(buffer, cs);
-                        if (hwBitmap == null) {
-                            setStatus("截图失败：wrapHardwareBuffer 返回 null");
-                            return;
-                        }
-
-                        softwareBitmap = hwBitmap.copy(Bitmap.Config.ARGB_8888, false);
-                        if (softwareBitmap == null) {
-                            setStatus("截图失败：bitmap copy 失败");
-                            return;
-                        }
-
-                        try { buffer.close(); } catch (Exception ignored) {}
-                        buffer = null;
-
-                        resizedBitmap = resize(softwareBitmap, 720);
-                        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                        boolean compressed = resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 55, bos);
-                        if (!compressed) {
-                            setStatus("截图失败：JPEG 压缩失败");
-                            return;
-                        }
-
-                        int w = resizedBitmap.getWidth();
-                        int h = resizedBitmap.getHeight();
-                        String base64 = Base64.encodeToString(bos.toByteArray(), Base64.NO_WRAP);
-                        upload(serverUrl, roomId, token, name, base64, w, h, source);
-
-                    } catch (Throwable e) {
-                        setStatus("截图处理失败：" + e.getClass().getSimpleName() + ": " + (e.getMessage() != null ? e.getMessage() : "未知错误"));
-                        getSharedPreferences("cineisle", 0).edit().putLong("lastScreenshotUploadMs", 0).apply();
-                    } finally {
-                        if (buffer != null) {
-                            try { buffer.close(); } catch (Exception ignored) {}
-                        }
-                        if (softwareBitmap != null) {
-                            try { softwareBitmap.recycle(); } catch (Exception ignored) {}
-                        }
-                        if (resizedBitmap != null && resizedBitmap != softwareBitmap) {
-                            try { resizedBitmap.recycle(); } catch (Exception ignored) {}
-                        }
-                    }
-                }
-
-                @Override public void onFailure(int errorCode) {
-                    setStatus("系统截图失败：code=" + errorCode + "；请确认无障碍里允许截图能力");
-                    getSharedPreferences("cineisle", 0).edit().putLong("lastScreenshotUploadMs", 0).apply();
-                }
-            });
+                Bitmap resized = resize(cropped, 720);
+                ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                resized.compress(Bitmap.CompressFormat.JPEG, 55, bos);
+                int w = resized.getWidth();
+                int h = resized.getHeight();
+                String base64 = Base64.encodeToString(bos.toByteArray(), Base64.NO_WRAP);
+                upload(serverUrl, roomId, token, name, base64, w, h, source);
+            } finally {
+                image.close();
+            }
         } catch (Throwable e) {
-            setStatus("截图调用失败：" + e.getClass().getSimpleName() + ": " + (e.getMessage() != null ? e.getMessage() : "未知错误"));
+            setStatus("截图失败：" + e.getClass().getSimpleName() + ": " + (e.getMessage() != null ? e.getMessage() : "未知错误"));
             getSharedPreferences("cineisle", 0).edit().putLong("lastScreenshotUploadMs", 0).apply();
         }
     }
