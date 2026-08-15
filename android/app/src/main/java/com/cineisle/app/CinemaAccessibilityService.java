@@ -61,12 +61,6 @@ public class CinemaAccessibilityService extends AccessibilityService {
         }
     };
 
-    @Override protected void onServiceConnected() {
-        super.onServiceConnected();
-        setStatus("无障碍服务已连接，等待截图请求");
-        startLoop();
-    }
-
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {
         if (event != null && event.getPackageName() != null) {
             foregroundPackage = event.getPackageName().toString();
