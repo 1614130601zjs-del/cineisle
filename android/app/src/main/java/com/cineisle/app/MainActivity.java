@@ -653,24 +653,7 @@ private final Runnable poller = new Runnable() {
         video = new VideoView(this);
         try { video.setZOrderOnTop(false); video.setZOrderMediaOverlay(false); } catch(Exception ignored) {}
         videoFrame.addView(video, new FrameLayout.LayoutParams(-1, -1));
-        video.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-            @Override public void onPrepared(MediaPlayer mp) {
-                final int vw = mp.getVideoWidth();
-                final int vh = mp.getVideoHeight();
-                if (vw <= 0 || vh <= 0) return;
-                videoFrame.post(new Runnable() {
-                    @Override public void run() {
-                        int fw = videoFrame.getWidth();
-                        int fh = videoFrame.getHeight();
-                        if (fw <= 0 || fh <= 0) return;
-                        float scale = Math.min((float) fw / vw, (float) fh / vh);
-                        int nw = (int) (vw * scale);
-                        int nh = (int) (vh * scale);
-                        video.setLayoutParams(new FrameLayout.LayoutParams(nw, nh, Gravity.CENTER));
-                    }
-                });
-            }
-        });
+
         subtitleOverlay = small("");
         subtitleOverlay.setTextColor(Color.WHITE);
         subtitleOverlay.setGravity(Gravity.CENTER);
@@ -888,22 +871,42 @@ private final Runnable poller = new Runnable() {
         addNote.setOnClickListener(v -> sendNote());
         addQuote.setOnClickListener(v -> sendQuoteLine());
 
-        video.setOnPreparedListener(mp -> {
-            View e = videoFrame.findViewWithTag("video_overlay");
-            if (e != null) e.setVisibility(View.GONE);
-            updateViewingContext(false);
-            if (lastStablePositionMs > 1500) {
-                final int restoreMs = lastStablePositionMs;
-                handler.postDelayed(() -> {
-                    try {
-                        if (video != null && video.getDuration() > 0 && video.getCurrentPosition() < 1000 && restoreMs > 1500) {
-                            video.seekTo(restoreMs);
+        video.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+            @Override public void onPrepared(MediaPlayer mp) {
+                // Fit video inside container
+                final int vw = mp.getVideoWidth();
+                final int vh = mp.getVideoHeight();
+                if (vw > 0 && vh > 0) {
+                    videoFrame.post(new Runnable() {
+                        @Override public void run() {
+                            int fw = videoFrame.getWidth();
+                            int fh = videoFrame.getHeight();
+                            if (fw <= 0 || fh <= 0) return;
+                            float scale = Math.min((float) fw / vw, (float) fh / vh);
+                            int nw = (int) (vw * scale);
+                            int nh = (int) (vh * scale);
+                            video.setLayoutParams(new FrameLayout.LayoutParams(nw, nh, Gravity.CENTER));
                         }
-                    } catch(Exception ignored) {}
-                }, 350);
+                    });
+                }
+                // Hide overlay
+                View e = videoFrame.findViewWithTag("video_overlay");
+                if (e != null) e.setVisibility(View.GONE);
+                updateViewingContext(false);
+                // Restore position
+                if (lastStablePositionMs > 1500) {
+                    final int restoreMs = lastStablePositionMs;
+                    handler.postDelayed(() -> {
+                        try {
+                            if (video != null && video.getDuration() > 0 && video.getCurrentPosition() < 1000 && restoreMs > 1500) {
+                                video.seekTo(restoreMs);
+                            }
+                        } catch(Exception ignored) {}
+                    }, 350);
+                }
+                sendMovieInfo();
+                sendCinemaContext(true);
             }
-            sendMovieInfo();
-            sendCinemaContext(true);
         });
         video.setOnCompletionListener(mp -> sendPlayback(true));
         video.setOnErrorListener((mp, what, extra) -> {
@@ -1645,7 +1648,13 @@ private final Runnable poller = new Runnable() {
         e.apply();
         updateServicePrefs();
         if (contextState != null) contextState.setText(contextStatusText());
-        toast("已请求" + aiName() + "看一眼，请停留在想给它看的画面");
+        // If MediaProjection not started, request it first
+        if (getSharedPreferences("cineisle", 0).getBoolean("mediaProjectionStarted", false)) {
+            toast("已请求" + aiName() + "看一眼，请停留在想给它看的画面");
+        } else {
+            toast("请先授权录屏，授权后将自动截图");
+            requestMediaProjection();
+        }
     }
 
 
@@ -2065,6 +2074,14 @@ private final Runnable poller = new Runnable() {
             sendMovieInfo();
             updateHeroTexts();
             renderCard();
+        }
+        if (requestCode == MEDIA_PROJECTION_REQUEST && resultCode == RESULT_OK && data != null) {
+            getSharedPreferences("cineisle", 0).edit().putBoolean("mediaProjectionStarted", true).apply();
+            Intent serviceIntent = new Intent(this, CinemaAccessibilityService.class);
+            serviceIntent.putExtra("resultCode", resultCode);
+            serviceIntent.putExtra("data", data);
+            startService(serviceIntent);
+            toast("录屏授权成功，截图功能已启用");
         }
     }
 
@@ -2809,5 +2826,10 @@ private final Runnable poller = new Runnable() {
 
     private void toast(String s) {
         Toast.makeText(this, s, Toast.LENGTH_SHORT).show();
+    }
+
+    private void requestMediaProjection() {
+        MediaProjectionManager mgr = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+        startActivityForResult(mgr.createScreenCaptureIntent(), MEDIA_PROJECTION_REQUEST);
     }
 }
