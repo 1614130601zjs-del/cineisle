@@ -645,15 +645,6 @@ private final Runnable poller = new Runnable() {
         add(header, headerBottom, -1, -2, 14);
         add(c, header, -1, -2, 4);
 
-        LinearLayout inviteMini = panel();
-        inviteMini.addView(tv("观影邀请卡", 17, Typeface.BOLD));
-        inviteSummary = small(invitationText());
-        inviteSummary.setTextColor(ink());
-        inviteSummary.setBackground(round(cardSoft(), 20));
-        inviteSummary.setPadding(dp(14), dp(12), dp(14), dp(12));
-        add(inviteMini, inviteSummary, -1, -2, 10);
-        importState = chip("本地影片未导入 · 等待准备");
-        add(inviteMini, importState, -1, -2, 10);
         
         videoFrame = new FrameLayout(this);
         normalVideoFrame = videoFrame;
@@ -810,7 +801,9 @@ private final Runnable poller = new Runnable() {
         add(hallTab, importState, -1, -2, 10);
         tabContent.addView(hallTab);
 
-        add(c, tabContent, -1, 0, 10);
+        LinearLayout.LayoutParams tcp = new LinearLayout.LayoutParams(-1, 0, 1);
+        tcp.setMargins(0, 0, 0, dp(10));
+        c.addView(tabContent, tcp);
 
         // Tab switch helper (compatible with API 23)
         final Button[] allTabs = {tabChat, tabSense, tabNote, tabHall};
