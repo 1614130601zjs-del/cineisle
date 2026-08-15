@@ -810,7 +810,7 @@ private final Runnable poller = new Runnable() {
         add(hallTab, importState, -1, -2, 10);
         tabContent.addView(hallTab);
 
-        add(c, tabContent, -1, 0, 1, 10);
+        add(c, tabContent, -1, 0, 10);
 
         // Tab switch helper (compatible with API 23)
         final Button[] allTabs = {tabChat, tabSense, tabNote, tabHall};
