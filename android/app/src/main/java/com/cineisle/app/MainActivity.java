@@ -649,9 +649,28 @@ private final Runnable poller = new Runnable() {
         videoFrame = new FrameLayout(this);
         normalVideoFrame = videoFrame;
         videoFrame.setBackground(round(color("#090D18"), 28));
+        videoFrame.setClipChildren(true);
         video = new VideoView(this);
         try { video.setZOrderOnTop(false); video.setZOrderMediaOverlay(false); } catch(Exception ignored) {}
         videoFrame.addView(video, new FrameLayout.LayoutParams(-1, -1));
+        video.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+            @Override public void onPrepared(MediaPlayer mp) {
+                final int vw = mp.getVideoWidth();
+                final int vh = mp.getVideoHeight();
+                if (vw <= 0 || vh <= 0) return;
+                videoFrame.post(new Runnable() {
+                    @Override public void run() {
+                        int fw = videoFrame.getWidth();
+                        int fh = videoFrame.getHeight();
+                        if (fw <= 0 || fh <= 0) return;
+                        float scale = Math.min((float) fw / vw, (float) fh / vh);
+                        int nw = (int) (vw * scale);
+                        int nh = (int) (vh * scale);
+                        video.setLayoutParams(new FrameLayout.LayoutParams(nw, nh, Gravity.CENTER));
+                    }
+                });
+            }
+        });
         subtitleOverlay = small("");
         subtitleOverlay.setTextColor(Color.WHITE);
         subtitleOverlay.setGravity(Gravity.CENTER);

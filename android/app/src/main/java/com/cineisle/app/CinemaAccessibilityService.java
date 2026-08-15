@@ -25,6 +25,13 @@ public class CinemaAccessibilityService extends AccessibilityService {
     private String foregroundPackage = "";
     private boolean loopStarted = false;
 
+    @Override
+    public void onServiceConnected() {
+        super.onServiceConnected();
+        setStatus("无障碍服务已连接，等待截图请求");
+        startLoop();
+    }
+
     private final Runnable screenshotLoop = new Runnable() {
         @Override public void run() {
             tryUploadScreenshot();
