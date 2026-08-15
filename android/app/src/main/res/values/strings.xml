@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">映屿 CineIsle</string>
+    <string name="a11y_summary">映屿低频画面同步</string>
+    <string name="a11y_desc">用于在你主动开启时，低频截取当前屏幕并上传到观影房间，让你设置的 AI 观影搭子看到你想分享的画面。</string>
+</resources>

@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: cineisle-server
+    env: node
+    rootDir: server
+    plan: free
+    buildCommand: npm install --package-lock=false --no-audit --no-fund && npm run check
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: CINEISLE_TOKEN
+        generateValue: true

@@ -1,0 +1,34 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.cineisle.app'
+    compileSdk 35
+
+    signingConfigs {
+        fixedDebug {
+            storeFile file('../signing/cineisle-debug.jks')
+            storePassword 'cineisle-debug'
+            keyAlias 'cineisle-debug'
+            keyPassword 'cineisle-debug'
+        }
+    }
+
+    defaultConfig {
+        applicationId 'com.cineisle.app'
+        minSdk 23
+        targetSdk 35
+        versionCode 14
+        versionName '0.4.4'
+    }
+
+    buildTypes {
+        debug {
+            // Use a repository-stable debug key so GitHub Actions debug APKs can update
+            // over previous CineIsle debug builds made from this source package.
+            signingConfig signingConfigs.fixedDebug
+        }
+    }
+}
+

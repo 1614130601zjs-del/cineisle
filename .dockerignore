@@ -1,0 +1,10 @@
+.git
+.github
+android
+build
+.gradle
+node_modules
+server/node_modules
+dist
+*.zip
+.DS_Store

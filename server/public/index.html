@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#141a31">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="映屿">
+  <title>映屿 CineIsle</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">映屿 CineIsle · Web/PWA</p>
+        <h1>一起登岛看电影</h1>
+        <p class="hero-copy">iPhone 用 Safari 添加到主屏幕；Android 可继续安装 APK。视频只在本机播放，后端只同步房间状态、聊天、弹幕、字幕上下文和低频画面。</p>
+      </div>
+      <div class="hero-actions">
+        <button id="installTipBtn" class="ghost">iOS 安装提示</button>
+        <button id="healthBtn" class="ghost">检查后端</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel settings-panel">
+        <div class="panel-title-row">
+          <div>
+            <p class="eyebrow">连接设置</p>
+            <h2>房间入口</h2>
+          </div>
+          <span id="healthState" class="pill">未检查</span>
+        </div>
+        <div class="grid two">
+          <label>后端地址
+            <input id="serverUrl" placeholder="https://你的-render.onrender.com">
+          </label>
+          <label>Token
+            <input id="token" placeholder="CINEISLE_TOKEN，可留空测试">
+          </label>
+          <label>我的昵称
+            <input id="viewerName" placeholder="观影人A">
+          </label>
+          <label>AI 名字
+            <input id="assistantName" placeholder="观影助手 / 林澈 / 小G">
+          </label>
+        </div>
+        <div class="button-row">
+          <button id="saveSettingsBtn">保存设置</button>
+          <button id="createRoomBtn" class="primary">创建房间</button>
+          <input id="joinRoomInput" class="room-input" placeholder="输入房间号">
+          <button id="joinRoomBtn">加入房间</button>
+        </div>
+        <p id="statusLine" class="status-line">准备就绪。iOS 用户可直接使用网页版本，添加到主屏幕后更像 App。</p>
+      </section>
+
+      <section class="layout">
+        <section class="panel player-panel">
+          <div class="panel-title-row">
+            <div>
+              <p class="eyebrow">播放</p>
+              <h2 id="roomTitle">未进入房间</h2>
+            </div>
+            <span id="roomBadge" class="pill strong">ROOM ----</span>
+          </div>
+
+          <div class="video-wrap" id="videoWrap">
+            <video id="video" controls playsinline webkit-playsinline></video>
+            <div id="subtitleOverlay" class="subtitle-overlay"></div>
+            <div id="danmakuLayer" class="danmaku-layer"></div>
+          </div>
+
+          <div class="button-row wrap">
+            <label class="file-button">导入影片<input id="videoFile" type="file" accept="video/*"></label>
+            <label class="file-button">导入字幕<input id="subtitleFile" type="file" accept=".srt,.vtt,.ass,.ssa,text/*"></label>
+            <button id="syncNowBtn">同步进度</button>
+            <button id="captureFrameBtn">给 AI 看一眼</button>
+            <button id="toggleDanmakuBtn">弹幕 ON</button>
+          </div>
+          <p id="playerState" class="status-line">请先创建或加入房间，再导入本地影片。iOS Safari 出于隐私限制，重新打开后需要重新选择影片。</p>
+        </section>
+
+        <aside class="panel side-panel">
+          <nav class="tabs" aria-label="映屿功能切换">
+            <button class="tab active" data-tab="chat">聊天</button>
+            <button class="tab" data-tab="notes">笔记</button>
+            <button class="tab" data-tab="card">卡片</button>
+            <button class="tab" data-tab="hall">影厅</button>
+          </nav>
+
+          <section id="tab-chat" class="tab-page active">
+            <div id="chatLog" class="log"></div>
+            <div class="composer">
+              <input id="chatInput" placeholder="发聊天 / 弹幕">
+              <button id="sendChatBtn">聊天</button>
+              <button id="sendDanmakuBtn" class="primary">弹幕</button>
+            </div>
+          </section>
+
+          <section id="tab-notes" class="tab-page">
+            <div id="noteLog" class="log"></div>
+            <div class="composer">
+              <input id="noteInput" placeholder="记录当前时间点的观影笔记">
+              <button id="addNoteBtn" class="primary">记一笔</button>
+            </div>
+            <p id="contextState" class="status-line">字幕上下文会随播放进度同步。</p>
+          </section>
+
+          <section id="tab-card" class="tab-page">
+            <div class="grid one">
+              <label>卡片摘录<input id="quoteInput" placeholder="喜欢的一句台词"></label>
+              <label>观后感<textarea id="cardNoteInput" placeholder="今晚想留下的话"></textarea></label>
+              <label>模板
+                <select id="cardTemplate">
+                  <option value="ticket">电影票根</option>
+                  <option value="receipt">片尾回执</option>
+                  <option value="postcard">观影明信片</option>
+                </select>
+              </label>
+            </div>
+            <button id="generateCardBtn" class="primary full">生成/更新卡片</button>
+            <div id="cardPreview" class="card-preview">还没有卡片。</div>
+          </section>
+
+          <section id="tab-hall" class="tab-page">
+            <p class="status-line">影厅会保存本机导入过的片名和上次进度；浏览器不能永久保存视频文件本体，重新打开后需要再次选择本地文件。</p>
+            <div id="hallList" class="hall-list"></div>
+            <button id="clearHallBtn" class="ghost full">清空本机影厅记录</button>
+          </section>
+        </aside>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="installDialog">
+    <h3>iPhone 添加到主屏幕</h3>
+    <p>用 Safari 打开映屿地址，点底部分享按钮，然后选择「添加到主屏幕」。之后就能像 App 一样从桌面进入。</p>
+    <p class="small">如果没有看到这个选项，先确认是在 Safari 中打开，不是在微信/QQ 内置浏览器。</p>
+    <button id="closeInstallDialog" class="primary full">知道啦</button>
+  </dialog>
+
+  <script src="/app.js"></script>
+</body>
+</html>

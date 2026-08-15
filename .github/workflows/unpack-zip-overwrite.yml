@@ -1,0 +1,77 @@
+name: Unpack ZIP and overwrite repo
+
+on:
+  workflow_dispatch:
+    inputs:
+      zip_file:
+        description: "仓库里的 ZIP 文件路径，例如 cineisle-update.zip"
+        required: true
+        default: "cineisle-pwa-android-v0.4.0.zip"
+      commit_message:
+        description: "提交信息"
+        required: true
+        default: "Update CineIsle from ZIP"
+
+permissions:
+  contents: write
+
+jobs:
+  unpack:
+    name: Unpack uploaded ZIP and commit changes
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Unpack ZIP over repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP_FILE="${{ github.event.inputs.zip_file }}"
+
+          if [ ! -f "$ZIP_FILE" ]; then
+            echo "找不到 ZIP：$ZIP_FILE"
+            echo "请先把 ZIP 上传/提交到仓库根目录，或在运行 workflow 时填写正确路径。"
+            exit 1
+          fi
+
+          rm -rf .unpack-tmp
+          mkdir .unpack-tmp
+          unzip -q "$ZIP_FILE" -d .unpack-tmp
+
+          SRC=".unpack-tmp"
+          TOP_COUNT=$(find .unpack-tmp -mindepth 1 -maxdepth 1 | wc -l | tr -d ' ')
+          TOP_DIR="$(find .unpack-tmp -mindepth 1 -maxdepth 1 -type d | head -n 1 || true)"
+
+          if [ "$TOP_COUNT" = "1" ] && [ -n "$TOP_DIR" ] && [ -d "$TOP_DIR" ]; then
+            SRC="$TOP_DIR"
+          fi
+
+          rsync -a --delete \
+            --exclude ".git/" \
+            --exclude ".github/" \
+            --exclude ".unpack-tmp/" \
+            --exclude "$ZIP_FILE" \
+            "$SRC"/ ./
+
+          rm -rf .unpack-tmp
+          rm -f "$ZIP_FILE"
+
+      - name: Commit and push
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "没有检测到文件变化。"
+            exit 0
+          fi
+
+          git commit -m "${{ github.event.inputs.commit_message }}"
+          git push
