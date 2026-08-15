@@ -705,32 +705,6 @@ private final Runnable poller = new Runnable() {
         MediaController mc = new MediaController(this);
         video.setMediaController(mc);
 
-        LinearLayout senseP = panel();
-        senseP.addView(tv(aiName() + "感知", 18, Typeface.BOLD));
-        senseP.addView(small("同步片名、进度、当前字幕和最近字幕；低频画面截图可交给无障碍服务自动上传，只在你打开开关后启用。"));
-        contextState = small(contextStatusText());
-        contextState.setTextColor(ink());
-        contextState.setBackground(round(cardSoft(), 20));
-        contextState.setPadding(dp(14), dp(12), dp(14), dp(12));
-        add(senseP, contextState, -1, -2, 10);
-        LinearLayout senseRow1 = hbox();
-        Button pickSubtitle = btn("导入字幕", false);
-        Button contextToggle = btn(contextAutoSync ? "字幕感知 ON" : "字幕感知 OFF", contextAutoSync);
-        senseRow1.addView(pickSubtitle, new LinearLayout.LayoutParams(0, dp(44), 1));
-        LinearLayout.LayoutParams stLp = new LinearLayout.LayoutParams(0, dp(44), 1); stLp.setMargins(dp(8),0,0,0);
-        senseRow1.addView(contextToggle, stLp);
-        add(senseP, senseRow1, -1, 44, 10);
-        LinearLayout senseRow2 = hbox();
-        Button screenshotToggle = btn(autoScreenshot ? "自动截图 ON" : "自动截图 OFF", autoScreenshot);
-        Button a11y = btn("开启无障碍", false);
-        senseRow2.addView(screenshotToggle, new LinearLayout.LayoutParams(0, dp(44), 1));
-        LinearLayout.LayoutParams ayLp = new LinearLayout.LayoutParams(0, dp(44), 1); ayLp.setMargins(dp(8),0,0,0);
-        senseRow2.addView(a11y, ayLp);
-        add(senseP, senseRow2, -1, 44, 8);
-        LinearLayout senseRow3 = hbox();
-        Button snapNow = btn("立即截图一次", false);
-        senseRow3.addView(snapNow, new LinearLayout.LayoutParams(-1, dp(44)));
-        add(senseP, senseRow3, -1, 44, 8);
         // Fix 4: Tab bar below video
         LinearLayout tabBar = hbox();
         tabBar.setGravity(Gravity.CENTER);
