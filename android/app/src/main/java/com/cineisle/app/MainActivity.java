@@ -11,6 +11,7 @@ import android.app.Dialog;
 import android.app.*;
 import android.os.*;
 import android.content.*;
+import android.os.Build;
 import android.media.projection.MediaProjectionManager;
 import android.media.MediaPlayer;
 import android.graphics.Bitmap;
@@ -2087,8 +2088,13 @@ private final Runnable poller = new Runnable() {
             Intent serviceIntent = new Intent(this, CinemaAccessibilityService.class);
             serviceIntent.putExtra("resultCode", resultCode);
             serviceIntent.putExtra("data", data);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { startForegroundService(serviceIntent); } else { startService(serviceIntent); }
-            toast("录屏授权成功，截图功能已启用");
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { startForegroundService(serviceIntent); } else { startService(serviceIntent); }
+                toast("录屏授权成功，截图功能已启用");
+            } catch (Exception e) {
+                toast("启动服务失败：" + e.getMessage());
+                e.printStackTrace();
+            }
         }
     }
 
