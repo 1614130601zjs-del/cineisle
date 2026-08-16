@@ -11,6 +11,7 @@ import android.app.Dialog;
 import android.app.*;
 import android.os.*;
 import android.content.*;
+import android.media.projection.MediaProjectionManager;
 import android.content.pm.ActivityInfo;
 import android.graphics.*;
 import android.graphics.drawable.*;
