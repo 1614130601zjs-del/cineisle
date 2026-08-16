@@ -285,11 +285,20 @@ private final Runnable poller = new Runnable() {
         e.setHintTextColor(muted());
         e.setTextSize(14);
         e.setBackground(round(cardSoft(), 18));
-        e.setPadding(dp(14), 0, dp(14), 0);
+        e.setPadding(dp(14), dp(12), dp(14), dp(12));
         e.setFocusable(true);
         e.setFocusableInTouchMode(true);
         e.setClickable(true);
         e.setCursorVisible(true);
+        e.setMinHeight(dp(48));
+        e.setOnTouchListener((v, event) -> {
+            if (event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
+                v.requestFocus();
+                android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
+                if (imm != null) imm.showSoftInput(v, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
+            }
+            return false;
+        });
         return e;
     }
 
