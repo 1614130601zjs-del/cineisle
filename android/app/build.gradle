@@ -4,7 +4,7 @@ plugins {
 
 android {
     namespace 'com.cineisle.app'
-    compileSdk 35
+    compileSdk 34
 
     signingConfigs {
         fixedDebug {
@@ -18,7 +18,7 @@ android {
     defaultConfig {
         applicationId 'com.cineisle.app'
         minSdk 23
-        targetSdk 35
+        targetSdk 34
         versionCode 14
         versionName '0.4.4'
     }
