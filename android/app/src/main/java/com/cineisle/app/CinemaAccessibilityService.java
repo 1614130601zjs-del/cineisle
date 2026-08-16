@@ -45,7 +45,6 @@ public class CinemaAccessibilityService extends AccessibilityService {
     public void onCreate() {
         super.onCreate();
         createNotificationChannel();
-        ensureForeground();
     }
 
     private void createNotificationChannel() {
@@ -59,43 +58,50 @@ public class CinemaAccessibilityService extends AccessibilityService {
 
     private void ensureForeground() {
         if (foregroundStarted) return;
-        Intent intent = new Intent(this, MainActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        PendingIntent pending = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        Notification.Builder builder;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            builder = new Notification.Builder(this, CHANNEL_ID);
-        } else {
-            builder = new Notification.Builder(this);
+        try {
+            Intent intent = new Intent(this, MainActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            PendingIntent pending = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            Notification.Builder builder;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                builder = new Notification.Builder(this, CHANNEL_ID);
+            } else {
+                builder = new Notification.Builder(this);
+            }
+            Notification notification = builder
+                .setContentTitle("CineIsle 观影助手")
+                .setContentText("正在后台运行截图功能")
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentIntent(pending)
+                .setOngoing(true)
+                .build();
+            startForeground(NOTIFICATION_ID, notification);
+            foregroundStarted = true;
+        } catch (Exception e) {
+            setStatus("前台通知失败：" + e.getClass().getSimpleName() + ": " + (e.getMessage() != null ? e.getMessage() : ""));
         }
-        Notification notification = builder
-            .setContentTitle("CineIsle 观影助手")
-            .setContentText("正在后台运行截图功能")
-            .setSmallIcon(android.R.drawable.ic_menu_camera)
-            .setContentIntent(pending)
-            .setOngoing(true)
-            .build();
-        startForeground(NOTIFICATION_ID, notification);
-        foregroundStarted = true;
     }
 
     @Override
     public void onServiceConnected() {
         super.onServiceConnected();
-        ensureForeground();
         setStatus("无障碍服务已连接，等待截图请求");
         startLoop();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        ensureForeground();
-        if (intent != null && intent.hasExtra("resultCode") && intent.hasExtra("data")) {
-            int resultCode = intent.getIntExtra("resultCode", -1);
-            Intent data = (Intent) intent.getParcelableExtra("data");
-            if (resultCode == Activity.RESULT_OK && data != null) {
-                startMediaProjection(resultCode, data);
+        try {
+            ensureForeground();
+            if (intent != null && intent.hasExtra("resultCode") && intent.hasExtra("data")) {
+                int resultCode = intent.getIntExtra("resultCode", -1);
+                Intent data = (Intent) intent.getParcelableExtra("data");
+                if (resultCode == Activity.RESULT_OK && data != null) {
+                    startMediaProjection(resultCode, data);
+                }
             }
+        } catch (Exception e) {
+            setStatus("onStartCommand 异常：" + e.getClass().getSimpleName() + ": " + (e.getMessage() != null ? e.getMessage() : ""));
         }
         return super.onStartCommand(intent, flags, startId);
     }
