@@ -1646,6 +1646,7 @@ private final Runnable poller = new Runnable() {
     }
 
     private void requestLocalScreenshotNow() {
+        // 设置截图请求，Service 会在授权后执行
         autoScreenshot = true;
         savePrefs();
         long requestId = System.currentTimeMillis();
@@ -1656,13 +1657,8 @@ private final Runnable poller = new Runnable() {
         e.apply();
         updateServicePrefs();
         if (contextState != null) contextState.setText(contextStatusText());
-        // If MediaProjection not started, request it first
-        if (getSharedPreferences("cineisle", 0).getBoolean("mediaProjectionStarted", false)) {
-            toast("已请求" + aiName() + "看一眼，请停留在想给它看的画面");
-        } else {
-            toast("请先授权录屏，授权后将自动截图");
-            requestMediaProjection();
-        }
+        // 请求 MediaProjection 授权（如果已授权系统会直接回调成功）
+        requestMediaProjection();
     }
 
 
@@ -2083,17 +2079,33 @@ private final Runnable poller = new Runnable() {
             updateHeroTexts();
             renderCard();
         }
-        if (requestCode == MEDIA_PROJECTION_REQUEST && resultCode == RESULT_OK && data != null) {
-            getSharedPreferences("cineisle", 0).edit().putBoolean("mediaProjectionStarted", true).apply();
-            Intent serviceIntent = new Intent(this, CinemaAccessibilityService.class);
-            serviceIntent.putExtra("resultCode", resultCode);
-            serviceIntent.putExtra("data", data);
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { startForegroundService(serviceIntent); } else { startService(serviceIntent); }
-                toast("录屏授权成功，截图功能已启用");
-            } catch (Exception e) {
-                toast("启动服务失败：" + e.getMessage());
-                e.printStackTrace();
+        if (requestCode == MEDIA_PROJECTION_REQUEST) {
+            requestingProjection = false;
+            if (resultCode == RESULT_OK && data != null) {
+                getSharedPreferences("cineisle", 0).edit().putBoolean("mediaProjectionStarted", true).apply();
+                Intent serviceIntent = new Intent(this, CinemaAccessibilityService.class);
+                serviceIntent.putExtra("resultCode", resultCode);
+                serviceIntent.putExtra("data", data);
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { startForegroundService(serviceIntent); } else { startService(serviceIntent); }
+                    toast("录屏授权成功，截图功能已启用");
+                    // 授权成功后立即触发一次截图
+                    autoScreenshot = true;
+                    savePrefs();
+                    long requestId = System.currentTimeMillis();
+                    getSharedPreferences("cineisle", 0).edit()
+                        .putBoolean("autoScreenshot", true)
+                        .putLong("screenshotRequestId", requestId)
+                        .putString("lastScreenshotStatus", "已请求" + aiName() + "看一眼，等待无障碍服务上传")
+                        .apply();
+                    updateServicePrefs();
+                    if (contextState != null) contextState.setText(contextStatusText());
+                } catch (Exception e) {
+                    toast("启动服务失败：" + e.getMessage());
+                    e.printStackTrace();
+                }
+            } else {
+                toast("录屏授权被取消");
             }
         }
     }
@@ -2842,6 +2854,11 @@ private final Runnable poller = new Runnable() {
     }
 
     private void requestMediaProjection() {
+        if (requestingProjection) {
+            toast("正在请求录屏授权，请稍候…");
+            return;
+        }
+        requestingProjection = true;
         MediaProjectionManager mgr = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
         startActivityForResult(mgr.createScreenCaptureIntent(), MEDIA_PROJECTION_REQUEST);
     }
