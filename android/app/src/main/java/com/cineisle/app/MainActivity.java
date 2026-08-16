@@ -78,6 +78,7 @@ public class MainActivity extends Activity {
     private long fullscreenExitAt = 0L;
     private String lastPlaybackIssue = "";
     private static final int MEDIA_PROJECTION_REQUEST = 1003;
+    private boolean requestingProjection = false;
     private final ArrayList<SubtitleCue> subtitleCues = new ArrayList<>();
     private final ArrayList<MovieItem> movieLibrary = new ArrayList<>();
 
