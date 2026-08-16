@@ -243,6 +243,11 @@ public class CinemaAccessibilityService extends AccessibilityService {
         try {
             setStatus("正在截图…");
             Image image = imageReader.acquireLatestImage();
+            // VirtualDisplay 可能需要时间生成第一帧，重试一次
+            if (image == null) {
+                try { Thread.sleep(500); } catch (InterruptedException ignored) {}
+                image = imageReader.acquireLatestImage();
+            }
             if (image == null) {
                 setStatus("截图失败：未获取到图像");
                 getSharedPreferences("cineisle", 0).edit().putLong("lastScreenshotUploadMs", 0).apply();
