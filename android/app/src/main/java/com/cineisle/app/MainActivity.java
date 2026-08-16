@@ -2087,7 +2087,7 @@ private final Runnable poller = new Runnable() {
             Intent serviceIntent = new Intent(this, CinemaAccessibilityService.class);
             serviceIntent.putExtra("resultCode", resultCode);
             serviceIntent.putExtra("data", data);
-            startService(serviceIntent);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { startForegroundService(serviceIntent); } else { startService(serviceIntent); }
             toast("录屏授权成功，截图功能已启用");
         }
     }
