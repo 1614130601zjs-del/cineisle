@@ -291,12 +291,13 @@ public class CinemaAccessibilityService extends AccessibilityService {
     }
 
     private void upload(String serverUrl, String roomId, String token, String name, String base64, int width, int height, String source) throws Exception {
+        handler.post(() -> setStatus("正在上传截图…"));
         URL url = new URL(serverUrl + "/api/rooms/" + roomId + "/screenshot");
         HttpURLConnection c = (HttpURLConnection) url.openConnection();
         c.setRequestMethod("POST");
         c.setDoOutput(true);
-        c.setConnectTimeout(10000);
-        c.setReadTimeout(10000);
+        c.setConnectTimeout(15000);
+        c.setReadTimeout(30000);
         c.setRequestProperty("Content-Type", "application/json; charset=utf-8");
         if (token != null && token.length() > 0) c.setRequestProperty("Authorization", "Bearer " + token);
         JSONObject body = new JSONObject();
@@ -307,11 +308,28 @@ public class CinemaAccessibilityService extends AccessibilityService {
         body.put("height", height);
         body.put("source", source);
         body.put("note", "映屿画面同步：用户开启截图后上传当前屏幕，不再要求映屿处于前台。");
+        String bodyStr = body.toString();
+        byte[] bodyBytes = bodyStr.getBytes("UTF-8");
+        handler.post(() -> setStatus("上传请求体大小：" + bodyBytes.length + " 字节"));
         try(OutputStream os = c.getOutputStream()) {
-            os.write(body.toString().getBytes("UTF-8"));
+            os.write(bodyBytes);
+            os.flush();
         }
         int code = c.getResponseCode();
-        if (code >= 400) throw new RuntimeException("HTTP " + code);
+        if (code >= 400) {
+            String err = "";
+            try {
+                java.io.InputStream es = c.getErrorStream();
+                if (es != null) {
+                    java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(es));
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = br.readLine()) != null) sb.append(line);
+                    err = sb.toString();
+                }
+            } catch (Exception ignored) {}
+            throw new RuntimeException("HTTP " + code + ": " + err);
+        }
         setStatus("截图已上传：" + width + "×" + height + "，HTTP " + code);
     }
 
