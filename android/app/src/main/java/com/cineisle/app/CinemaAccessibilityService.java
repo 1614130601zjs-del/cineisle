@@ -11,6 +11,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.PixelFormat;
+import android.graphics.ImageFormat;
 import android.hardware.HardwareBuffer;
 import android.media.ImageReader;
 import android.media.Image;
@@ -45,6 +46,7 @@ public class CinemaAccessibilityService extends AccessibilityService {
     public void onCreate() {
         super.onCreate();
         createNotificationChannel();
+        ensureForeground();
     }
 
     private void createNotificationChannel() {
@@ -214,7 +216,7 @@ public class CinemaAccessibilityService extends AccessibilityService {
         screenWidth = metrics.widthPixels;
         screenHeight = metrics.heightPixels;
         screenDensity = metrics.densityDpi;
-        imageReader = ImageReader.newInstance(screenWidth, screenHeight, PixelFormat.RGBA_8888, 2);
+        imageReader = ImageReader.newInstance(screenWidth, screenHeight, ImageFormat.RGBA_8888, 2);
         mediaProjection.createVirtualDisplay("cineisle", screenWidth, screenHeight, screenDensity,
             DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, imageReader.getSurface(), null, null);
     }
