@@ -45,6 +45,7 @@ public class MainActivity extends Activity {
     private String assistantName = "观影助手";
     private String avatar = "🐰";
     private String currentPage = "home";
+    private boolean uiBuilt = false;
     private VideoView video;
     private Button navHome, navRoom, navHall, navCard, navFavorites;
     private TextView roomTitle, roomCodeView, syncState, chatLog, noteLog, cardPreview, memberState, homeStatus, homeSub, heroBadge, fullChatLog, movieLibraryList, favoritesList, inviteSummary, importState;
@@ -117,8 +118,24 @@ private final Runnable poller = new Runnable() {
     @Override public void onCreate(Bundle b) {
         super.onCreate(b);
         loadPrefs();
-        buildUI();
-        showPage("home");
+        if (b != null) {
+            currentPage = b.getString("currentPage", "home");
+        }
+        if (!uiBuilt) {
+            buildUI();
+            uiBuilt = true;
+        }
+        showPage(currentPage);
+    }
+
+    @Override public void onConfigurationChanged(android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        // 配置变化时不重建 Activity，只更新需要适配的 UI
+    }
+
+    @Override protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putString("currentPage", currentPage);
     }
 
     private void loadPrefs() {
