@@ -129,32 +129,44 @@ public class CinemaAccessibilityService extends AccessibilityService {
     }
 
     private void tryUploadScreenshot() {
-        android.content.SharedPreferences sp = getSharedPreferences("cineisle", 0);
-        String serverUrl = sp.getString("serverUrl", "");
-        String roomId = sp.getString("roomId", "");
-        String token = sp.getString("token", "");
-        String name = sp.getString("name", "观影人");
-        String assistantName = helperName(sp.getString("assistantName", "观影助手"));
-        if (serverUrl.length() == 0 || roomId.length() == 0) return;
+        try {
+            android.content.SharedPreferences sp = getSharedPreferences("cineisle", 0);
+            String serverUrl = sp.getString("serverUrl", "");
+            String roomId = sp.getString("roomId", "");
+            String token = sp.getString("token", "");
+            String name = sp.getString("name", "观影人");
+            String assistantName = helperName(sp.getString("assistantName", "观影助手"));
+            if (serverUrl.length() == 0 || roomId.length() == 0) {
+                setStatus("截图跳过：未配置服务器或房间号");
+                return;
+            }
 
-        long localReq = sp.getLong("screenshotRequestId", 0);
-        long handledLocalReq = sp.getLong("lastHandledScreenshotRequestId", 0);
-        boolean localForce = localReq > 0 && localReq != handledLocalReq;
-        if (localForce) {
-            sp.edit().putLong("lastHandledScreenshotRequestId", localReq).apply();
+            long localReq = sp.getLong("screenshotRequestId", 0);
+            long handledLocalReq = sp.getLong("lastHandledScreenshotRequestId", 0);
+            boolean localForce = localReq > 0 && localReq != handledLocalReq;
+            if (localForce) {
+                sp.edit().putLong("lastHandledScreenshotRequestId", localReq).apply();
+            }
+
+            boolean remoteForce = checkRemoteRequest(serverUrl, roomId, token, sp, assistantName);
+            boolean auto = sp.getBoolean("autoScreenshot", false);
+            setStatus("截图检查：auto=" + auto + " localForce=" + localForce + " remoteForce=" + remoteForce + " mp=" + (mediaProjection != null) + " ir=" + (imageReader != null));
+            if (!auto && !localForce && !remoteForce) return;
+
+            boolean force = localForce || remoteForce;
+            long now = System.currentTimeMillis();
+            long last = sp.getLong("lastScreenshotUploadMs", 0);
+            long intervalMs = Math.max(10000, sp.getLong("screenshotIntervalMs", 15000));
+            if (!force && now - last < intervalMs) {
+                setStatus("截图跳过：间隔保护 " + (now - last) + "/" + intervalMs + "ms");
+                return;
+            }
+            sp.edit().putLong("lastScreenshotUploadMs", now).apply();
+            takeAndUpload(serverUrl, roomId, token, name, force ? "accessibility-request" : "accessibility-low-frequency");
+        } catch (Throwable t) {
+            setStatus("截图循环异常：" + t.getClass().getSimpleName() + ": " + (t.getMessage() != null ? t.getMessage() : ""));
+            getSharedPreferences("cineisle", 0).edit().putLong("lastScreenshotUploadMs", 0).apply();
         }
-
-        boolean remoteForce = checkRemoteRequest(serverUrl, roomId, token, sp, assistantName);
-        boolean auto = sp.getBoolean("autoScreenshot", false);
-        if (!auto && !localForce && !remoteForce) return;
-
-        boolean force = localForce || remoteForce;
-        long now = System.currentTimeMillis();
-        long last = sp.getLong("lastScreenshotUploadMs", 0);
-        long intervalMs = Math.max(10000, sp.getLong("screenshotIntervalMs", 15000));
-        if (!force && now - last < intervalMs) return;
-        sp.edit().putLong("lastScreenshotUploadMs", now).apply();
-        takeAndUpload(serverUrl, roomId, token, name, force ? "accessibility-request" : "accessibility-low-frequency");
     }
 
     private String helperName(String s) {
