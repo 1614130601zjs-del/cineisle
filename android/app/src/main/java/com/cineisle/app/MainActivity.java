@@ -286,6 +286,10 @@ private final Runnable poller = new Runnable() {
         e.setTextSize(14);
         e.setBackground(round(cardSoft(), 18));
         e.setPadding(dp(14), 0, dp(14), 0);
+        e.setFocusable(true);
+        e.setFocusableInTouchMode(true);
+        e.setClickable(true);
+        e.setCursorVisible(true);
         return e;
     }
 
