@@ -47,8 +47,8 @@ public class CinemaAccessibilityService extends AccessibilityService {
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null && intent.hasExtra("resultCode") && intent.hasExtra("data")) {
             int resultCode = intent.getIntExtra("resultCode", -1);
-            Intent data = intent.getParcelableExtra("data");
-            if (resultCode == RESULT_OK && data != null) {
+            Intent data = (Intent) intent.getParcelableExtra("data");
+            if (resultCode == Activity.RESULT_OK && data != null) {
                 startMediaProjection(resultCode, data);
             }
         }
