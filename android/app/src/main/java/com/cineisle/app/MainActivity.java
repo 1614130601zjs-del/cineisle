@@ -935,10 +935,14 @@ private final Runnable poller = new Runnable() {
 
         handler.postDelayed(new Runnable() {
             @Override public void run() {
+                // 无论是否在房间里，只要视频在播放就持续更新字幕显示
+                if (video != null && video.getDuration() > 0) {
+                    updateViewingContext(false);
+                }
+                // 房间相关的同步逻辑（只在房间里执行）
                 if (!applyingRemote && roomId.length() > 0 && video.getDuration() > 0) {
                     rememberPlaybackPosition();
                     int sec = outboundPositionMs() / 1000;
-                    updateViewingContext(false);
                     if (sec != lastSentSecond) {
                         lastSentSecond = sec;
                         sendPlayback(false);
