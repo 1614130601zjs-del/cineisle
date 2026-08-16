@@ -108,8 +108,11 @@ public class CinemaAccessibilityService extends AccessibilityService {
 
     private final Runnable screenshotLoop = new Runnable() {
         @Override public void run() {
-            tryUploadScreenshot();
-            handler.postDelayed(this, 5000);
+            try {
+                tryUploadScreenshot();
+            } finally {
+                handler.postDelayed(this, 5000);
+            }
         }
     };
 
