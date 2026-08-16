@@ -8,6 +8,7 @@ import android.graphics.Bitmap;
 import android.graphics.PixelFormat;
 import android.hardware.HardwareBuffer;
 import android.media.ImageReader;
+import android.media.Image;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
