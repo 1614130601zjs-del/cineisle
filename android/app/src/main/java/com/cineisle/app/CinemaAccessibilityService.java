@@ -207,6 +207,14 @@ public class CinemaAccessibilityService extends AccessibilityService {
         MediaProjectionManager mgr = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
         mediaProjection = mgr.getMediaProjection(resultCode, data);
         if (mediaProjection != null) {
+            // Android 14+ 要求必须先注册回调
+            mediaProjection.registerCallback(new MediaProjection.Callback() {
+                @Override public void onStop() {
+                    mediaProjection = null;
+                    if (imageReader != null) { imageReader.close(); imageReader = null; }
+                    setStatus("MediaProjection 已停止");
+                }
+            }, handler);
             initImageReader();
             setStatus("MediaProjection 已启动，可以截图");
         } else {
