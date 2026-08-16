@@ -240,47 +240,39 @@ public class CinemaAccessibilityService extends AccessibilityService {
             getSharedPreferences("cineisle", 0).edit().putLong("lastScreenshotUploadMs", 0).apply();
             return;
         }
-        // 在后台线程执行截图，避免阻塞主线程
-        screenshotExecutor.execute(() -> {
-            try {
-                handler.post(() -> setStatus("正在截图…"));
-                Image image = imageReader.acquireLatestImage();
-                // 第一次获取可能为 null（VirtualDisplay 尚未生成第一帧），等待重试
-                if (image == null) {
-                    Thread.sleep(300);
-                    image = imageReader.acquireLatestImage();
-                }
-                if (image == null) {
-                    handler.post(() -> setStatus("截图失败：未获取到图像"));
-                    getSharedPreferences("cineisle", 0).edit().putLong("lastScreenshotUploadMs", 0).apply();
-                    return;
-                }
-                try {
-                    Image.Plane[] planes = image.getPlanes();
-                    ByteBuffer buffer = planes[0].getBuffer();
-                    int pixelStride = planes[0].getPixelStride();
-                    int rowStride = planes[0].getRowStride();
-                    int rowPadding = rowStride - pixelStride * screenWidth;
-                    Bitmap bitmap = Bitmap.createBitmap(screenWidth + rowPadding / pixelStride, screenHeight, Bitmap.Config.ARGB_8888);
-                    bitmap.copyPixelsFromBuffer(buffer);
-                    Bitmap cropped = Bitmap.createBitmap(bitmap, 0, 0, screenWidth, screenHeight);
-                    bitmap.recycle();
-
-                    Bitmap resized = resize(cropped, 720);
-                    ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                    resized.compress(Bitmap.CompressFormat.JPEG, 55, bos);
-                    int w = resized.getWidth();
-                    int h = resized.getHeight();
-                    String base64 = Base64.encodeToString(bos.toByteArray(), Base64.NO_WRAP);
-                    upload(serverUrl, roomId, token, name, base64, w, h, source);
-                } finally {
-                    image.close();
-                }
-            } catch (Throwable e) {
-                handler.post(() -> setStatus("截图失败：" + e.getClass().getSimpleName() + ": " + (e.getMessage() != null ? e.getMessage() : "未知错误")));
+        try {
+            setStatus("正在截图…");
+            Image image = imageReader.acquireLatestImage();
+            if (image == null) {
+                setStatus("截图失败：未获取到图像");
                 getSharedPreferences("cineisle", 0).edit().putLong("lastScreenshotUploadMs", 0).apply();
+                return;
             }
-        });
+            try {
+                Image.Plane[] planes = image.getPlanes();
+                ByteBuffer buffer = planes[0].getBuffer();
+                int pixelStride = planes[0].getPixelStride();
+                int rowStride = planes[0].getRowStride();
+                int rowPadding = rowStride - pixelStride * screenWidth;
+                Bitmap bitmap = Bitmap.createBitmap(screenWidth + rowPadding / pixelStride, screenHeight, Bitmap.Config.ARGB_8888);
+                bitmap.copyPixelsFromBuffer(buffer);
+                Bitmap cropped = Bitmap.createBitmap(bitmap, 0, 0, screenWidth, screenHeight);
+                bitmap.recycle();
+
+                Bitmap resized = resize(cropped, 720);
+                ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                resized.compress(Bitmap.CompressFormat.JPEG, 55, bos);
+                int w = resized.getWidth();
+                int h = resized.getHeight();
+                String base64 = Base64.encodeToString(bos.toByteArray(), Base64.NO_WRAP);
+                upload(serverUrl, roomId, token, name, base64, w, h, source);
+            } finally {
+                image.close();
+            }
+        } catch (Exception e) {
+            setStatus("截图失败：" + e.getClass().getSimpleName() + ": " + (e.getMessage() != null ? e.getMessage() : "未知错误"));
+            getSharedPreferences("cineisle", 0).edit().putLong("lastScreenshotUploadMs", 0).apply();
+        }
     }
 
     private Bitmap resize(Bitmap src, int maxWidth) {
